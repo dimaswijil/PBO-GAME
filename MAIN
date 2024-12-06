@@ -1,0 +1,131 @@
+import pygame
+import random
+
+# Inisialisasi Pygame
+pygame.init()
+
+# Konstanta
+WIDTH, HEIGHT = 400, 600
+FPS = 60
+FRUIT_FALL_SPEED = 5
+BOMB_FALL_SPEED = 7
+FRUIT_SPAWN_RATE = 30  # Frame rate untuk spawn buah
+BOMB_SPAWN_RATE = 60   # Frame rate untuk spawn bom
+
+# Warna
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
+BLUE = (0, 0, 255)
+
+# Buah dan Bom
+FRUITS = ['apple', 'banana', 'orange', 'grape']
+FRUIT_IMAGES = {
+    'apple': pygame.image.load('apple.png'),
+    'banana': pygame.image.load('banana.png'),
+    'orange': pygame.image.load('orange.png'),
+    'grape': pygame.image.load('grape.png'),
+}
+BOMB_IMAGE = pygame.image.load('bomb.png')
+
+# Setup layar
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Fall Fruit and Bomb")
+
+# Kelas untuk Buah dan Bom
+class Fruit:
+    def __init__(self):
+        self.type = random.choice(FRUITS)
+        self.image = FRUIT_IMAGES[self.type]
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(0, WIDTH - self.rect.width)
+        self.rect.y = 0
+
+    def fall(self):
+        self.rect.y += FRUIT_FALL_SPEED
+
+class Bomb:
+    def __init__(self):
+        self.image = BOMB_IMAGE
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(0, WIDTH - self.rect.width)
+        self.rect.y = 0
+
+    def fall(self):
+        self.rect.y += BOMB_FALL_SPEED
+
+# Fungsi utama
+def main():
+    clock = pygame.time.Clock()
+    score = 0
+    fruits = []
+    bombs = []
+    frame_count = 0
+    running = True
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and player.rect.x > 0:
+            player.rect.x -= 5
+        if keys[pygame.K_RIGHT] and player.rect.x < WIDTH - player.rect.width:
+            player.rect.x += 5
+
+        # Spawn buah dan bom
+        frame_count += 1
+        if frame_count % FRUIT_SPAWN_RATE == 0:
+            fruits.append(Fruit())
+        if frame_count % BOMB_SPAWN_RATE == 0:
+            bombs.append(Bomb())
+
+        # Update posisi buah dan bom
+        for fruit in fruits[:]:
+            fruit.fall()
+            if fruit.rect.y > HEIGHT:
+                fruits.remove(fruit)
+            if fruit.rect.colliderect(player.rect):
+                score += 10
+                fruits.remove(fruit)
+
+        for bomb in bombs[:]:
+            bomb.fall()
+            if bomb.rect.y > HEIGHT:
+                bombs.remove(bomb)
+            if bomb.rect.colliderect(player.rect):
+                running = False  # Game over
+
+        # Gambar
+        screen.fill(WHITE)
+        for fruit in fruits:
+            screen.blit(fruit.image, fruit.rect)
+        for bomb in bombs:
+            screen.blit(bomb.image, bomb.rect)
+        screen.blit(player.image, player.rect)
+
+        # Tampilkan skor
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(f'Score: {score}', True, BLUE)
+        screen.blit(score_text, (10, 10))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    pygame.quit()
+
+# Setup karakter pemain
+class Player:
+    def __init__(self):
+        self.image = pygame.image.load('basket.png')  # Ganti dengan gambar keranjang
+        self.rect = self.image.get_rect()
+        self.rect.x = WIDTH // 2
+        self.rect.y = HEIGHT - 100
+
+# Inisialisasi pemain
+player = Player()
+
+if __name__ == "__main__":
+    main()
