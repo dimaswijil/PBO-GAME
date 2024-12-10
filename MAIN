@@ -22,13 +22,14 @@ BLUE = (0, 0, 255)
 # Folder tempat file gambar disimpan
 base_path = Path(__file__).parent / "assets"
 # File path
-apple = base_path / "apple.png"
-banana = base_path / "banana.png"
-orange = base_path / "orange.png"
-grape = base_path / "grape.png"
-bomb = base_path / "bomb.png"
-basket = base_path / "basket.png"
-background = base_path / "background.png"
+apple = r"assets/apple.png"
+banana = r"assets/banana.png"
+orange = r"assets/orange.png"
+grape = r"assets/grape.png"
+bomb = r"assets/bomb.png"
+basket = r"assets/basket.png"
+background = r"assets/background.png"
+
 
 # Buah dan Bom
 FRUITS = ['apple', 'banana', 'orange', 'grape']
