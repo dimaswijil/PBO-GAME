@@ -1,19 +1,19 @@
 import pygame
 import random
 from pathlib import Path
+
 # Inisialisasi Pygame
 pygame.init()
 
 # Konstanta
 WIDTH, HEIGHT = 400, 600
 FPS = 60
-FRUIT_FALL_SPEED = 1
-BOMB_FALL_SPEED = 1
 FRUIT_SPAWN_RATE = 160  # Frame rate untuk spawn buah
 BOMB_SPAWN_RATE = 400   # Frame rate untuk spawn bom
+MAX_SPEED = 10  # Batas kecepatan maksimum untuk buah dan bom
 
 # Warna
-WHITE = (255, 255, 255)
+WHITE = (65, 176, 223)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
@@ -21,213 +21,274 @@ BLUE = (0, 0, 255)
 
 # Folder tempat file gambar disimpan
 base_path = Path(__file__).parent / "assets"
-# File path
-apple = base_path / "apple.png"
-banana = base_path / "banana.png"
-orange = base_path / "orange.png"
-grape = base_path / "grape.png"
-bomb = base_path / "bomb.png"
-basket = base_path / "basket.png"
-background = base_path / "background.png"
+top_score_path = Path(__file__).parent / "top_score.txt"
 
+# Kelas untuk memuat asset
+class Assets:
+    def __init__(self):
+        self.apple = base_path / "apple.png"
+        self.banana = base_path / "banana.png"
+        self.orange = base_path / "orange.png"
+        self.grape = base_path / "grape.png"
+        self.bomb = base_path / "bomb.png"
+        self.basket = base_path / "basket.png"
+        self.background = base_path / "background.png"
 
-# Buah dan Bom
-FRUITS = ['apple', 'banana', 'orange', 'grape']
-FRUIT_IMAGES = {
-    'apple': pygame.image.load(apple),
-    'banana': pygame.image.load(banana),
-    'orange': pygame.image.load(orange),
-    'grape': pygame.image.load(grape),
-}
-BOMB_IMAGE = pygame.image.load(bomb)
+        self.FRUIT_IMAGES = {
+            'apple': pygame.image.load(self.apple),
+            'banana': pygame.image.load(self.banana),
+            'orange': pygame.image.load(self.orange),
+            'grape': pygame.image.load(self.grape),
+        }
+
+        self.BOMB_IMAGE = pygame.image.load(self.bomb)
+        self.BASKET_IMAGE = pygame.image.load(self.basket)
+        self.BACKGROUND_IMAGE = pygame.image.load(self.background)
+
+assets = Assets()
+
+# Kelas untuk mengelola skor tertinggi
+class TopScoreManager:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.top_score = self._load_top_score()
+
+    def _load_top_score(self):
+        try:
+            with open(self.file_path, "r") as file:
+                return int(file.read().strip())
+        except (FileNotFoundError, ValueError):
+            with open(self.file_path, "w") as file:
+                file.write("0")
+            return 0
+
+    def update_top_score(self, score):
+        if score > self.top_score:
+            self.top_score = score
+            with open(self.file_path, "w") as file:
+                file.write(str(self.top_score))
+
+# Inisialisasi pengelola skor tertinggi
+top_score_manager = TopScoreManager(top_score_path)
 
 # Setup layar
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Fall Fruit and Bomb")
 
+# Kelas untuk menu mulai
+class StartMenu:
+    def __init__(self, screen):
+        self.screen = screen
+
+    def display(self):
+        font_title = pygame.font.Font(None, 56)  # Ukuran font yang lebih kecil
+        font_option = pygame.font.Font(None, 48)  # Ukuran font untuk teks pilihan
+
+        title_text = font_title.render("Fall Fruit and Bomb", True, BLUE)
+        start_text = font_option.render("Press Enter to Start", True, GREEN)
+        quit_text = font_option.render("Press ESC to Quit", True, RED)
+
+        self.screen.fill(WHITE)
+        self.background_image = pygame.transform.scale(assets.BACKGROUND_IMAGE, (WIDTH, HEIGHT))
+
+        # Menempatkan teks judul di tengah
+        title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+        self.screen.blit(title_text, title_rect)
+
+        # Menempatkan teks pilihan di tengah
+        start_rect = start_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        quit_rect = quit_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.5))
+
+        self.screen.blit(start_text, start_rect)
+        self.screen.blit(quit_text, quit_rect)
+
+        pygame.display.flip()
+
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:  # Start game when ENTER is pressed
+                        waiting = False
+                    if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
+                        pygame.quit()
+                        quit()
+
+# Kelas untuk layar Game Over
+class GameOverScreen:
+    def __init__(self, screen):
+        self.screen = screen
+
+    def display(self, score):
+        font_title = pygame.font.Font(None, 72)
+        font_option = pygame.font.Font(None, 48)
+
+        title_text = font_title.render("Game Over", True, RED)
+        score_text = font_option.render(f"Your Score: {score}", True, BLUE)
+        top_score_text = font_option.render(f"Top Score: {top_score_manager.top_score}", True, YELLOW)
+        restart_text = font_option.render("Press R to Restart", True, GREEN)
+        quit_text = font_option.render("Press ESC to Quit", True, RED)
+
+        self.screen.fill(WHITE)
+
+        # Menempatkan teks Game Over dan skor di tengah
+        title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+        score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        top_score_rect = top_score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
+        restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.5))
+        quit_rect = quit_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.2))
+
+        self.screen.blit(title_text, title_rect)
+        self.screen.blit(score_text, score_rect)
+        self.screen.blit(top_score_text, top_score_rect)
+        self.screen.blit(restart_text, restart_rect)
+        self.screen.blit(quit_text, quit_rect)
+
+        pygame.display.flip()
+
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:  # Restart game when R is pressed
+                        return True  # Indicating to restart the game
+                    if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
+                        pygame.quit()
+                        quit()
+
 # Kelas untuk Buah dan Bom
 class Fruit:
     def __init__(self):
-        self.type = random.choice(FRUITS)
-        self.image = FRUIT_IMAGES[self.type]
+        self.type = random.choice(list(assets.FRUIT_IMAGES.keys()))
+        self.image = assets.FRUIT_IMAGES[self.type]
         self.image = pygame.transform.scale(self.image, (30, 30))
         self.rect = self.image.get_rect()
         self.rect.x = random.randint(0, WIDTH - self.rect.width)
         self.rect.y = 0
+        self.speed = 1
 
     def fall(self):
-        self.rect.y += FRUIT_FALL_SPEED
+        self.rect.y += self.speed
 
 class Bomb:
     def __init__(self):
-        self.image = BOMB_IMAGE
+        self.image = assets.BOMB_IMAGE
         self.image = pygame.transform.scale(self.image, (20, 30))
         self.rect = self.image.get_rect()
         self.rect.x = random.randint(0, WIDTH - self.rect.width)
         self.rect.y = 0
+        self.speed = 1
 
     def fall(self):
-        self.rect.y += BOMB_FALL_SPEED
+        self.rect.y += self.speed
 
-# Fungsi untuk menampilkan menu mulai
-def start_menu():
-    font_title = pygame.font.Font(None, 36)  # Ukuran font yang lebih kecil
-    font_option = pygame.font.Font(None, 24)  # Ukuran font untuk teks pilihan
-
-    title_text = font_title.render("Fall Fruit and Bomb", True, BLUE)
-    start_text = font_option.render("Press Enter to Start", True, GREEN)
-    quit_text = font_option.render("Press ESC to Quit", True, RED)
-
-    screen.fill(WHITE)
-
-    # Menempatkan teks judul di tengah
-    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
-    screen.blit(title_text, title_rect)
-
-    # Menempatkan teks pilihan di tengah
-    start_rect = start_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-    quit_rect = quit_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.5))
-
-    screen.blit(start_text, start_rect)
-    screen.blit(quit_text, quit_rect)
-
-    pygame.display.flip()
-
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:  # Start game when ENTER is pressed
-                    waiting = False
-                if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
-                    pygame.quit()
-                    quit()
-
-# Fungsi untuk menampilkan layar Game Over
-def game_over(score):
-    font_title = pygame.font.Font(None, 36)
-    font_option = pygame.font.Font(None, 24)
-
-    title_text = font_title.render("Game Over", True, RED)
-    score_text = font_option.render(f"Your Score: {score}", True, BLUE)
-    restart_text = font_option.render("Press R to Restart", True, GREEN)
-    quit_text = font_option.render("Press ESC to Quit", True, RED)
-
-    screen.fill(WHITE)
-
-    # Menempatkan teks Game Over dan skor di tengah
-    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
-    score_rect = score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-    restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.5))
-    quit_rect = quit_text.get_rect(center=(WIDTH // 2, HEIGHT // 1.2))
-
-    screen.blit(title_text, title_rect)
-    screen.blit(score_text, score_rect)
-    screen.blit(restart_text, restart_rect)
-    screen.blit(quit_text, quit_rect)
-
-    pygame.display.flip()
-
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:  # Restart game when R is pressed
-                    waiting = False
-                    main()
-                if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
-                    pygame.quit()
-                    quit()
-
-# Fungsi utama
-def main():
-    clock = pygame.time.Clock()
-    score = 0
-    fruits = []
-    bombs = []
-    frame_count = 0
-    running = True
-
-    # Muat gambar latar belakang dan sesuaikan ukurannya
-    background_image = pygame.image.load(background)
-    background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Ukuran disesuaikan
-
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and player.rect.x > 0:
-            player.rect.x -= 5
-        if keys[pygame.K_RIGHT] and player.rect.x < WIDTH - player.rect.width:
-            player.rect.x += 5
-
-        # Spawn buah dan bom
-        frame_count += 1
-        if frame_count % FRUIT_SPAWN_RATE == 0:
-            fruits.append(Fruit())
-        if frame_count % BOMB_SPAWN_RATE == 0:
-            bombs.append(Bomb())
-
-        # Update posisi buah dan bom
-        for fruit in fruits[:]:
-            fruit.fall()
-            if fruit.rect.y > HEIGHT:
-                fruits.remove(fruit)
-            if fruit.rect.colliderect(player.rect):
-                score += 10
-                fruits.remove(fruit)
-
-        for bomb in bombs[:]:
-            bomb.fall()
-            if bomb.rect.y > HEIGHT:
-                bombs.remove(bomb)
-            if bomb.rect.colliderect(player.rect):
-                running = False  # Game over
-
-        # Gambar latar belakang
-        screen.blit(background_image, (0, 0))  # Menampilkan gambar latar belakang di (0,0)
-
-        # Gambar buah, bom, dan pemain
-        for fruit in fruits:
-            screen.blit(fruit.image, fruit.rect)
-        for bomb in bombs:
-            screen.blit(bomb.image, bomb.rect)
-        screen.blit(player.image, player.rect)
-
-        # Tampilkan skor
-        font = pygame.font.Font(None, 36)
-        score_text = font.render(f'Score: {score}', True, BLUE)
-        screen.blit(score_text, (10, 10))
-
-        pygame.display.flip()
-        clock.tick(FPS)
-
-    # Game over, tampilkan layar Game Over
-    game_over(score)
-
-# Setup karakter pemain
+# Kelas untuk karakter pemain
 class Player:
     def __init__(self):
-        self.image = pygame.image.load(basket)  # Ganti dengan gambar keranjang
-        self.image = pygame.transform.scale(self.image, (50, 30))
+        self.image = pygame.transform.scale(assets.BASKET_IMAGE, (50, 30))
         self.rect = self.image.get_rect()
         self.rect.x = WIDTH // 2
-        self.rect.y = HEIGHT - 100
+        self.rect.y = HEIGHT - 50
 
-# Inisialisasi pemain
-player = Player()
+# Kelas utama game
+class Game:
+    def __init__(self):
+        self.screen = screen
+        self.clock = pygame.time.Clock()
+        self.running = True
+        self.score = 0
+        self.fruits = []
+        self.bombs = []
+        self.frame_count = 0
+        self.player = Player()
+        self.background_image = pygame.transform.scale(assets.BACKGROUND_IMAGE, (WIDTH, HEIGHT))
 
-# Menampilkan menu mulai
-start_menu()
+    def spawn_objects(self):
+        if self.frame_count % FRUIT_SPAWN_RATE == 0:
+            fruit = Fruit()
+            # Menambahkan kecepatan buah, dengan kenaikan 0.2 setiap 50 skor
+            fruit.speed = 1 + (self.score // 50) * 0.2  # Kecepatan bertambah 0.2 setiap 50 skor
+            fruit.speed = min(fruit.speed, MAX_SPEED)  # Menjaga kecepatan tidak melebihi MAX_SPEED
+            self.fruits.append(fruit)
+        if self.frame_count % BOMB_SPAWN_RATE == 0:
+            bomb = Bomb()
+            # Menambahkan kecepatan bom, dengan kenaikan 0.2 setiap 50 skor
+            bomb.speed = 1 + (self.score // 50) * 0.2  # Kecepatan bertambah 0.2 setiap 50 skor
+            bomb.speed = min(bomb.speed, MAX_SPEED)  # Menjaga kecepatan tidak melebihi MAX_SPEED
+            self.bombs.append(bomb)
+
+
+    def update_objects(self):
+        for fruit in self.fruits[:]:
+            fruit.fall()
+            if fruit.rect.y > HEIGHT:
+                self.fruits.remove(fruit)
+            if fruit.rect.colliderect(self.player.rect):
+                self.score += 10
+                self.fruits.remove(fruit)
+
+        for bomb in self.bombs[:]:
+            bomb.fall()
+            if bomb.rect.y > HEIGHT:
+                self.bombs.remove(bomb)
+            if bomb.rect.colliderect(self.player.rect):
+                self.running = False
+
+    def handle_input(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and self.player.rect.x > 0:
+            self.player.rect.x -= 5
+        if keys[pygame.K_RIGHT] and self.player.rect.x < WIDTH - self.player.rect.width:
+            self.player.rect.x += 5
+
+    def draw(self):
+        self.screen.blit(self.background_image, (0, 0))
+        for fruit in self.fruits:
+            self.screen.blit(fruit.image, fruit.rect)
+        for bomb in self.bombs:
+            self.screen.blit(bomb.image, bomb.rect)
+        self.screen.blit(self.player.image, self.player.rect)
+        font = pygame.font.Font(None, 48)
+        score_text = font.render(f'Score: {self.score}', True, BLUE)
+        top_score_text = font.render(f'Top Score: {top_score_manager.top_score}', True, YELLOW)
+        self.screen.blit(score_text, (10, 10))
+        self.screen.blit(top_score_text, (10, 40))
+        pygame.display.flip()
+
+    def run(self):
+        while self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            self.handle_input()
+            self.frame_count += 1
+            self.spawn_objects()
+            self.update_objects()
+            self.draw()
+            self.clock.tick(FPS)
+
+        top_score_manager.update_top_score(self.score)
+
+        # Setelah game selesai, tampilkan layar Game Over
+        restart = game_over_screen.display(self.score)
+        if restart:
+            self.__init__()  # Restart the game by reinitializing the game object
+            self.run()  # Restart the game loop
+
+# Inisialisasi menu mulai dan layar Game Over
+start_menu = StartMenu(screen)
+game_over_screen = GameOverScreen(screen)
 
 # Menjalankan game
 if __name__ == "__main__":
-    main()
+    start_menu.display()
+    game = Game()
+    game.run()
+
