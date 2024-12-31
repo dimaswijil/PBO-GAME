@@ -81,8 +81,8 @@ class StartMenu:
         self.screen = screen
 
     def display(self):
-        font_title = pygame.font.Font(None, 56)  # Ukuran font yang lebih kecil
-        font_option = pygame.font.Font(None, 48)  # Ukuran font untuk teks pilihan
+        font_title = pygame.font.Font(None, 56)
+        font_option = pygame.font.Font(None, 48)
 
         title_text = font_title.render("Fall Fruit and Bomb", True, BLUE)
         start_text = font_option.render("Press Enter to Start", True, GREEN)
@@ -111,9 +111,9 @@ class StartMenu:
                     pygame.quit()
                     quit()
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:  # Start game when ENTER is pressed
+                    if event.key == pygame.K_RETURN:
                         waiting = False
-                    if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
+                    if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         quit()
 
@@ -156,37 +156,43 @@ class GameOverScreen:
                     pygame.quit()
                     quit()
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r:  # Restart game when R is pressed
-                        return True  # Indicating to restart the game
-                    if event.key == pygame.K_ESCAPE:  # Quit game when ESC is pressed
+                    if event.key == pygame.K_r:
+                        return True
+                    if event.key == pygame.K_ESCAPE:
                         pygame.quit()
                         quit()
 
-# Kelas untuk Buah dan Bom
-class Fruit:
-    def __init__(self):
-        self.type = random.choice(list(assets.FRUIT_IMAGES.keys()))
-        self.image = assets.FRUIT_IMAGES[self.type]
-        self.image = pygame.transform.scale(self.image, (30, 30))
+# Kelas dasar untuk objek yang jatuh
+class FallingObject:
+    def __init__(self, image, x, y, speed):
+        self.image = image
         self.rect = self.image.get_rect()
-        self.rect.x = random.randint(0, WIDTH - self.rect.width)
-        self.rect.y = 0
-        self.speed = 1
+        self.rect.x = x
+        self.rect.y = y
+        self.speed = speed
 
     def fall(self):
         self.rect.y += self.speed
 
-class Bomb:
+# Kelas untuk Buah yang mewarisi dari FallingObject
+class Fruit(FallingObject):
     def __init__(self):
-        self.image = assets.BOMB_IMAGE
-        self.image = pygame.transform.scale(self.image, (20, 30))
-        self.rect = self.image.get_rect()
-        self.rect.x = random.randint(0, WIDTH - self.rect.width)
-        self.rect.y = 0
-        self.speed = 1
+        type_of_fruit = random.choice(list(assets.FRUIT_IMAGES.keys()))
+        image = assets.FRUIT_IMAGES[type_of_fruit]
+        image = pygame.transform.scale(image, (30, 30))
+        x = random.randint(0, WIDTH - 30)
+        y = 0
+        speed = 1
+        super().__init__(image, x, y, speed)
 
-    def fall(self):
-        self.rect.y += self.speed
+# Kelas untuk Bom yang mewarisi dari FallingObject
+class Bomb(FallingObject):
+    def __init__(self):
+        image = pygame.transform.scale(assets.BOMB_IMAGE, (20, 30))
+        x = random.randint(0, WIDTH - 20)
+        y = 0
+        speed = 1
+        super().__init__(image, x, y, speed)
 
 # Kelas untuk karakter pemain
 class Player:
@@ -212,17 +218,14 @@ class Game:
     def spawn_objects(self):
         if self.frame_count % FRUIT_SPAWN_RATE == 0:
             fruit = Fruit()
-            # Menambahkan kecepatan buah, dengan kenaikan 0.2 setiap 50 skor
-            fruit.speed = 1 + (self.score // 50) * 0.2  # Kecepatan bertambah 0.2 setiap 50 skor
-            fruit.speed = min(fruit.speed, MAX_SPEED)  # Menjaga kecepatan tidak melebihi MAX_SPEED
+            fruit.speed = 1 + (self.score // 50) * 0.2
+            fruit.speed = min(fruit.speed, MAX_SPEED)
             self.fruits.append(fruit)
         if self.frame_count % BOMB_SPAWN_RATE == 0:
             bomb = Bomb()
-            # Menambahkan kecepatan bom, dengan kenaikan 0.2 setiap 50 skor
-            bomb.speed = 1 + (self.score // 50) * 0.2  # Kecepatan bertambah 0.2 setiap 50 skor
-            bomb.speed = min(bomb.speed, MAX_SPEED)  # Menjaga kecepatan tidak melebihi MAX_SPEED
+            bomb.speed = 1 + (self.score // 50) * 0.2
+            bomb.speed = min(bomb.speed, MAX_SPEED)
             self.bombs.append(bomb)
-
 
     def update_objects(self):
         for fruit in self.fruits[:]:
@@ -279,8 +282,8 @@ class Game:
         # Setelah game selesai, tampilkan layar Game Over
         restart = game_over_screen.display(self.score)
         if restart:
-            self.__init__()  # Restart the game by reinitializing the game object
-            self.run()  # Restart the game loop
+            self.__init__()
+            self.run()
 
 # Inisialisasi menu mulai dan layar Game Over
 start_menu = StartMenu(screen)
@@ -291,4 +294,3 @@ if __name__ == "__main__":
     start_menu.display()
     game = Game()
     game.run()
-
